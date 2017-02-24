@@ -50,7 +50,7 @@ class PoleServer_handler implements Runnable {
     public PoleServer_handler(Socket socket) {
         t = new Thread(this);
         clientSocket = socket;
-
+        
         try {
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             out.flush();
@@ -153,13 +153,18 @@ class PoleServer_handler implements Runnable {
     // independently. The interface needs to be changed if the control of one
     // pendulum needs sensing data from other pendulums.
     double calculate_action(double angle, double angleDot, double pos, double posDot) {
+    	  
       double action = 0;
+      double kp = 7.002;
+      //double kp = 20;
+      double kd = .09;
+      double error = angle;
        // if (angle > 0 && angleDiff < 0) {
-       if (angle > 0) {
+    /*   if (angle > 0) {
            if (angle > 65 * 0.01745) {
-               action = 10;
+               action = 15;
            } else if (angle > 60 * 0.01745) {
-               action = 8;
+               action = 11;
            } else if (angle > 50 * 0.01745) {
                action = 7.5;
            } else if (angle > 30 * 0.01745) {
@@ -177,9 +182,9 @@ class PoleServer_handler implements Runnable {
            }
        } else if (angle < 0) {
            if (angle < -65 * 0.01745) {
-               action = -10;
+               action = -15;
            } else if (angle < -60 * 0.01745) {
-               action = -8;
+               action = -10;
            } else if (angle < -50 * 0.01745) {
                action = -7.5;
            } else if (angle < -30 * 0.01745) {
@@ -197,7 +202,8 @@ class PoleServer_handler implements Runnable {
            }
        } else {
            action = 0.;
-       }
+       }*/
+       action = kp*error + kd*angleDot;
        return action;
    }
 
