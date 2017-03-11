@@ -34,7 +34,7 @@ public class ControlServer {
  */
 class PoleServer_handler implements Runnable {
     // Set the number of poles
-    private static final int NUM_POLES = 1;
+    private static final int NUM_POLES = 3;
 
     static ServerSocket providerSocket;
     Socket connection = null;
@@ -43,6 +43,9 @@ class PoleServer_handler implements Runnable {
     String message = "abc";
     static Socket clientSocket;
     Thread t;
+    int time;
+    double bias;
+
 
     /**
      * Class Constructor
@@ -50,7 +53,9 @@ class PoleServer_handler implements Runnable {
     public PoleServer_handler(Socket socket) {
         t = new Thread(this);
         clientSocket = socket;
-        
+        time = 0; 
+        bias = -.001;
+        bias = -.5;
         try {
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             out.flush();
@@ -101,12 +106,20 @@ class PoleServer_handler implements Runnable {
                   angleDot = data[i*4+1];
                   pos = data[i*4+2];
                   posDot = data[i*4+3];
-                  
+//                    angle = data[0*4+0];
+//                    angleDot = data[0*4+1];
+//                    pos = data[0*4+2];
+//                    posDot = data[0*4+3];
+                    
                   System.out.println("server < pole["+i+"]: "+angle+"  "
                       +angleDot+"  "+pos+"  "+posDot);
-                  actions[i] = calculate_action(angle, angleDot, pos, posDot);
-                }
-
+                  if(i == 0)
+                	  actions[i] = calculate_action(angle, angleDot, pos, posDot);
+                  else if(i == 1)
+                	  actions[i] = calculate_action2(angle, angleDot, pos, posDot, (double)data[0*4+2]);
+                  else 
+                	  actions[i] = calculate_action3(angle, angleDot, pos, posDot, (double)data[1*4+2]);
+                  }
                 sendMessage_doubleArray(actions);
 
             }
@@ -153,58 +166,61 @@ class PoleServer_handler implements Runnable {
     // independently. The interface needs to be changed if the control of one
     // pendulum needs sensing data from other pendulums.
     double calculate_action(double angle, double angleDot, double pos, double posDot) {
-    	  
-      double action = 0;
-      double kp = 7.002;
-      //double kp = 20;
-      double kd = .09;
-      double error = angle;
-       // if (angle > 0 && angleDiff < 0) {
-    /*   if (angle > 0) {
-           if (angle > 65 * 0.01745) {
-               action = 15;
-           } else if (angle > 60 * 0.01745) {
-               action = 11;
-           } else if (angle > 50 * 0.01745) {
-               action = 7.5;
-           } else if (angle > 30 * 0.01745) {
-               action = 4;
-           } else if (angle > 20 * 0.01745) {
-               action = 2;
-           } else if (angle > 10 * 0.01745) {
-               action = 0.5;
-           } else if(angle >5*0.01745){
-               action = 0.2;
-           } else if(angle >2*0.01745){
-               action = 0.1;
-           } else {
-               action = 0;
-           }
-       } else if (angle < 0) {
-           if (angle < -65 * 0.01745) {
-               action = -15;
-           } else if (angle < -60 * 0.01745) {
-               action = -10;
-           } else if (angle < -50 * 0.01745) {
-               action = -7.5;
-           } else if (angle < -30 * 0.01745) {
-               action = -4;
-           } else if (angle < -20 * 0.01745) {
-               action = -2;
-           } else if (angle < -10 * 0.01745) {
-               action = -0.5;
-           } else if(angle <-5*0.01745){
-               action = -0.2;
-           } else if(angle <-2*0.01745){
-               action = -0.1;
-           } else {
-               action = 0;
-           }
-       } else {
-           action = 0.;
-       }*/
-       action = kp*error + kd*angleDot;
-       return action;
+    	double kp = 11;
+    	double kd = 1.2;   	
+    	/* to move the pendelum forward, we add a bias to the
+        angle which in this case serves as the error for the
+        controller. This bias is determined by a linear function
+        where the largest the bias will be is -.1 (this occurs when
+        the pendelum is farthest from the desired location) and the
+        smallest is 0 (this occurs when the pendelum is right on top
+        of the desired location, 2 in this case)*/
+    	double bias = (0.1/4)*pos - 0.05; 
+        double angError = angle + bias;
+        double posError = posDot;
+        double action = 0;
+        /* Our implementation of the PD controller involved using all four 
+         * variables provided. This specific controller will move the penduelum
+         * to the desired location, 2 in this case.
+         */
+        action = kp*angError + kd*angleDot + 1*posError + 0*pos;
+        System.out.println(kp*angError + " " + kd*angleDot + " " +.7*posError);
+        return action;
+   }
+    /*Function called for the second pendelum */
+    double calculate_action2(double angle, double angleDot, double pos, double posDot , double pos2) {
+    	/* This second controller made the second pendelum will follow the first
+    	 * pendelum, staying exactly 0.6 behind the first pendelum, which is found
+    	 * with the parameter pos2 (position of first pendelum). Since in this case,
+    	 * the desired location is always moving, we have to calculate slope, and 
+    	 * do a linear regression to find the corect bias for the angle
+    	 */
+    	double kp = 11;
+    	double kd = 1.2;
+    	/*
+    	 * In the case for the second pendulum, the desired location is 0.6 
+    	 */
+    	double slope = (-0.1)/(-3 - (pos2 - 0.6));
+    	double bias = slope*(pos + 3) - 0.1 ;
+        double angError = angle + bias;
+        double posError = posDot;
+        double action = 0;
+        action = kp*angError + kd*angleDot + 1*posError + 0*pos;
+        System.out.println(kp*angError + " " + kd*angleDot + " " +.7*posError);
+        return action;
+   }
+    /*Function called for third pendelum */
+    double calculate_action3(double angle, double angleDot, double pos, double posDot , double pos3) {
+    	double kp = 11;
+    	double kd = 1.2;
+    	double slope = (-0.1)/(-4 - (pos3 - 0.6)); 
+    	double bias = slope*(pos + 4) - 0.1 ;
+        double angError = angle + bias;
+        double posError = posDot;
+        double action = 0;
+        action = kp*angError + kd*angleDot + 1*posError + 0*pos;
+        System.out.println(kp*angError + " " + kd*angleDot + " " +.7*posError);
+        return action;
    }
 
     /**

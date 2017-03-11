@@ -8,7 +8,7 @@ import javax.swing.*;
 import java.net.*;
 import java.io.*;
 
-public class Client extends Applet {
+public class Client extends JApplet {
 
     TriggerType triggerType = TriggerType.TIMER_TRIGGER;
     // TriggerType triggerType = TriggerType.EVENT_TRIGGER;
