@@ -43,8 +43,7 @@ class PoleServer_handler implements Runnable {
     String message = "abc";
     static Socket clientSocket;
     Thread t;
-    int time;
-    double bias;
+
 
 
     /**
@@ -53,9 +52,6 @@ class PoleServer_handler implements Runnable {
     public PoleServer_handler(Socket socket) {
         t = new Thread(this);
         clientSocket = socket;
-        time = 0; 
-        bias = -.001;
-        bias = -.5;
         try {
             out = new ObjectOutputStream(clientSocket.getOutputStream());
             out.flush();
@@ -115,10 +111,10 @@ class PoleServer_handler implements Runnable {
                       +angleDot+"  "+pos+"  "+posDot);
                   if(i == 0)
                 	  actions[i] = calculate_action(angle, angleDot, pos, posDot);
-                  else if(i == 1)
-                	  actions[i] = calculate_action2(angle, angleDot, pos, posDot, (double)data[0*4+2]);
-                  else 
-                	  actions[i] = calculate_action3(angle, angleDot, pos, posDot, (double)data[1*4+2]);
+                  else if(i == 1)//if the second pendulum, then also send the pos of the first
+                	  actions[i] = calculate_action2(angle, angleDot, pos, posDot, data[0*4+2]);
+                  else  // if the thrid pendelum, then also send the pos of the second
+                	  actions[i] = calculate_action3(angle, angleDot, pos, posDot, data[1*4+2]);
                   }
                 sendMessage_doubleArray(actions);
 
@@ -184,7 +180,6 @@ class PoleServer_handler implements Runnable {
          * to the desired location, 2 in this case.
          */
         action = kp*angError + kd*angleDot + 1*posError + 0*pos;
-        System.out.println(kp*angError + " " + kd*angleDot + " " +.7*posError);
         return action;
    }
     /*Function called for the second pendelum */
@@ -198,7 +193,8 @@ class PoleServer_handler implements Runnable {
     	double kp = 11;
     	double kd = 1.2;
     	/*
-    	 * In the case for the second pendulum, the desired location is 0.6 
+    	 * In the case for the second pendulum, the desired location is 0.6 away from the
+    	 * first pendelum
     	 */
     	double slope = (-0.1)/(-3 - (pos2 - 0.6));
     	double bias = slope*(pos + 3) - 0.1 ;
@@ -206,10 +202,9 @@ class PoleServer_handler implements Runnable {
         double posError = posDot;
         double action = 0;
         action = kp*angError + kd*angleDot + 1*posError + 0*pos;
-        System.out.println(kp*angError + " " + kd*angleDot + " " +.7*posError);
         return action;
    }
-    /*Function called for third pendelum */
+    /*Function called for third pendelum, which it 0.6 away from the second pendelum */
     double calculate_action3(double angle, double angleDot, double pos, double posDot , double pos3) {
     	double kp = 11;
     	double kd = 1.2;
@@ -219,7 +214,6 @@ class PoleServer_handler implements Runnable {
         double posError = posDot;
         double action = 0;
         action = kp*angError + kd*angleDot + 1*posError + 0*pos;
-        System.out.println(kp*angError + " " + kd*angleDot + " " +.7*posError);
         return action;
    }
 
